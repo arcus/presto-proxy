@@ -1,0 +1,84 @@
+---
+kind: Deployment
+apiVersion: apps/v1beta1
+metadata:
+  name: starburst-presto-proxy
+  labels:
+    env: prod
+    app: starburst-presto
+    component: proxy
+
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        env: prod
+        app: starburst-presto
+        component: proxy
+
+    spec:
+      restartPolicy: Always
+
+      containers:
+        - image: quay.research.chop.edu/arcus/presto-proxy:latest
+          name: starburst-presto-proxy
+          command: ["/presto-proxy"]
+          args:
+            - "--bind.addr"
+            - "0.0.0.0:8081"
+            - "--server"
+            - "http://starburst-presto:8080"
+
+          imagePullPolicy: Always
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1G
+            limits:
+              cpu: 500m
+              memory: 1G
+
+          ports:
+            - containerPort: 8081
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: starburst-presto-proxy
+spec:
+  selector:
+    env: prod
+    app: starburst-presto
+    component: proxy
+  type: NodePort
+  ports:
+    - port: 8081
+
+
+---
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: presto
+  labels:
+    env: prod
+    name: presto
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: 'true'
+    kubernetes.io/ingress.class: tectonic
+spec:
+  tls:
+    - hosts:
+        - presto.reskubeprod.research.chop.edu
+      secretName: wildcard-tls
+  rules:
+    - host: presto.reskubeprod.research.chop.edu
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: starburst-presto-proxy
+              servicePort: 8081

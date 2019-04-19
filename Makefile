@@ -52,4 +52,7 @@ push:
 		docker push ${IMAGE_NAME}:latest ; \
 	fi;
 
+deploy:
+	kubectl --context=presto apply -f k8s/deployment.yml
+
 .PHONY: nop build dist image push
