@@ -102,6 +102,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Printf("listening on: %s", bindAddr)
+	log.Printf("proxying to: %s", pserver)
+
 	proxy := httputil.NewSingleHostReverseProxy(pserver)
 
 	proxy.ModifyResponse = func(r *http.Response) error {
