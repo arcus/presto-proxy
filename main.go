@@ -93,7 +93,7 @@ func main() {
 
 	pflag.Parse()
 
-	if !strings.HasPrefix(server, "http://") || !strings.HasPrefix(server, "https://") {
+	if !strings.HasPrefix(server, "http://") && !strings.HasPrefix(server, "https://") {
 		server = "http://" + server
 	}
 
