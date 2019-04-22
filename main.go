@@ -86,9 +86,13 @@ func main() {
 	var (
 		bindAddr string
 		server   string
+		tlsCrt   string
+		tlsKey   string
 	)
 
 	pflag.StringVar(&bindAddr, "bind.addr", "localhost:8081", "Presto proxy bind address.")
+	pflag.StringVar(&tlsCrt, "tls.crt", "", "TLS cert path.")
+	pflag.StringVar(&tlsKey, "tls.key", "", "TLS key path.")
 	pflag.StringVar(&server, "server", "localhost:8080", "Presto server location")
 
 	pflag.Parse()
@@ -193,7 +197,12 @@ func main() {
 		return nil
 	}
 
-	if err := http.ListenAndServe(bindAddr, proxy); err != nil {
+	if tlsKey != "" {
+		err = http.ListenAndServeTLS(bindAddr, tlsCrt, tlsKey, proxy)
+	} else {
+		err = http.ListenAndServe(bindAddr, proxy)
+	}
+	if err != nil {
 		log.Fatal(err)
 	}
 }

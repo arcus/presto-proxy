@@ -20,6 +20,9 @@ spec:
     spec:
       restartPolicy: Always
 
+      volumes:
+        - name: wildcard-tls
+
       containers:
         - image: quay.research.chop.edu/arcus/presto-proxy:latest
           name: starburst-presto-proxy
@@ -29,6 +32,10 @@ spec:
             - "0.0.0.0:8081"
             - "--server"
             - "http://starburst-presto:8080"
+            - "--tls.key"
+            - "/tls/tls.key"
+            - "--tls.crt"
+            - "/tls/tls.crt"
 
           imagePullPolicy: Always
 
@@ -42,6 +49,10 @@ spec:
 
           ports:
             - containerPort: 8081
+
+          volumeMounts:
+            - name: wildcard-tls
+              mountPath: /tls
 
 ---
 kind: Service
