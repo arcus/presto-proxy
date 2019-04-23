@@ -2,8 +2,9 @@ package main
 
 type Config struct {
 	HTTP struct {
-		Addr string
-		TLS  struct {
+		Bind      string
+		Advertise string
+		TLS       struct {
 			Crt string
 			Key string
 		}

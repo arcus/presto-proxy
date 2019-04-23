@@ -32,7 +32,8 @@ func run() error {
 	var cfg Config
 
 	config.Init("PRESTO_PROXY", &cfg, func(fs *pflag.FlagSet) error {
-		fs.String("http.addr", "localhost:8081", "Presto proxy bind address.")
+		fs.String("http.bind", "localhost:8081", "Presto proxy bind address.")
+		fs.String("http.advertise", "", "Presto proxy advertise address.")
 		fs.String("http.tls.crt", "", "TLS cert path.")
 		fs.String("http.tls.key", "", "TLS key path.")
 		fs.String("presto.addr", "localhost:8080", "Presto server location")
@@ -49,17 +50,26 @@ func run() error {
 		cfg.Presto.Addr = "http://" + cfg.Presto.Addr
 	}
 
-	prestoAddr, err := url.Parse(cfg.Presto.Addr)
+	targetAddr, err := url.Parse(cfg.Presto.Addr)
 	if err != nil {
 		return err
 	}
 
-	proxyAddr := &url.URL{
-		Scheme: "http",
-		Host:   cfg.HTTP.Addr,
+	if cfg.HTTP.Advertise == "" {
+		cfg.HTTP.Advertise = cfg.HTTP.Bind
 	}
+
+	if !strings.HasPrefix(cfg.HTTP.Advertise, "http://") && !strings.HasPrefix(cfg.HTTP.Advertise, "https://") {
+		cfg.HTTP.Advertise = "http://" + cfg.HTTP.Advertise
+	}
+
+	advertiseAddr, err := url.Parse(cfg.HTTP.Advertise)
+	if err != nil {
+		return err
+	}
+
 	if cfg.HTTP.TLS.Key != "" {
-		proxyAddr.Scheme = "https"
+		advertiseAddr.Scheme = "https"
 	}
 
 	var authBackend *ldapBackend
@@ -79,8 +89,9 @@ func run() error {
 		}
 	}
 
-	log.Printf("listening on: %s", proxyAddr)
-	log.Printf("proxying to: %s", prestoAddr)
+	log.Printf("listening on: %s", cfg.HTTP.Bind)
+	log.Printf("proxying to: %s", targetAddr)
+	log.Printf("advertised as: %s", advertiseAddr)
 
 	// Function to rewrite a URL to use the proxy scheme and host.
 	rewriteURL := func(u string) string {
@@ -88,15 +99,17 @@ func run() error {
 			return ""
 		}
 		p, _ := url.Parse(u)
-		p.Scheme = proxyAddr.Scheme
-		p.Host = proxyAddr.Host
+		p.Scheme = advertiseAddr.Scheme
+		p.Host = advertiseAddr.Host
 		return p.String()
 	}
 
 	// Setup reverse proxy.
-	proxy := httputil.NewSingleHostReverseProxy(prestoAddr)
+	proxy := httputil.NewSingleHostReverseProxy(targetAddr)
 
 	proxy.ModifyResponse = func(r *http.Response) error {
+		log.Printf("received %s %s", r.Request.Method, r.Request.URL)
+
 		// Ignore responses with empty bodies.
 		if r.ContentLength <= 0 {
 			return nil
@@ -107,6 +120,11 @@ func run() error {
 			return nil
 		}
 
+		// Ignore gzipped payloads.
+		if r.Header.Get("content-encoding") != "" {
+			return nil
+		}
+
 		// Decode the response body from Presto in order to rewrite the URLs
 		// and possibly handle the response polling in the background.
 		rep := &Response{}
@@ -114,6 +132,7 @@ func run() error {
 		err := dec.Decode(rep)
 		r.Body.Close()
 		if err != nil {
+			log.Printf("%s %s %s", r.Request.Method, r.Request.URL, r.Header)
 			return fmt.Errorf("error decoding response body: %s", err)
 		}
 
@@ -135,7 +154,7 @@ func run() error {
 
 			// Handle query in the background and change the response to include the URL.
 			if async {
-				go handleBackground(rep, prestoAddr)
+				go handleBackground(rep, targetAddr)
 				rep = newAsyncResponse(rep.Id, rep.InfoUri)
 			}
 		}
@@ -213,10 +232,10 @@ func run() error {
 	})
 
 	// Serve HTTP.
-	if proxyAddr.Scheme == "https" {
-		return http.ListenAndServeTLS(proxyAddr.Host, cfg.HTTP.TLS.Crt, cfg.HTTP.TLS.Key, nil)
+	if cfg.HTTP.TLS.Crt != "" {
+		return http.ListenAndServeTLS(cfg.HTTP.Bind, cfg.HTTP.TLS.Crt, cfg.HTTP.TLS.Key, nil)
 	}
-	return http.ListenAndServe(proxyAddr.Host, nil)
+	return http.ListenAndServe(cfg.HTTP.Bind, nil)
 }
 
 func handleBackground(rep *Response, targetAddr *url.URL) {
