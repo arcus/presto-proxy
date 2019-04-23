@@ -82,9 +82,9 @@ func run() error {
 			SearchDN:     cfg.LDAP.SearchDN,
 			SearchFilter: cfg.LDAP.SearchFilter,
 		}
-		defer authBackend.Close()
 
-		if err := authBackend.Dial(); err != nil {
+		// Ensure a connection can be established.
+		if err := authBackend.Ping(); err != nil {
 			return err
 		}
 	}

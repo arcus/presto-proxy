@@ -25,35 +25,33 @@ type ldapBackend struct {
 	Password     string `json:"password"`
 	SearchDN     string `json:"searchdn"`
 	SearchFilter string `json:"searchfilter"`
-
-	conn *ldap.Conn
 }
 
-func (a *ldapBackend) Dial() error {
+// Ping ensures a connection can be opened and the bind username and password work.
+func (a *ldapBackend) Ping() error {
 	conn, err := ldap.Dial("tcp", a.Address)
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	err = conn.Bind(a.Username, a.Password)
 	if err != nil {
 		return err
 	}
 
-	a.conn = conn
-	return nil
-}
-
-func (a *ldapBackend) Close() error {
-	if a.conn != nil {
-		a.conn.Close()
-	}
 	return nil
 }
 
 func (a *ldapBackend) Authenticate(cxt context.Context, username, password string) (bool, error) {
-	// Re-bind with the search creds.
-	err := a.conn.Bind(a.Username, a.Password)
+	// Open connection.
+	conn, err := ldap.Dial("tcp", a.Address)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+
+	err = conn.Bind(a.Username, a.Password)
 	if err != nil {
 		return false, err
 	}
@@ -71,7 +69,7 @@ func (a *ldapBackend) Authenticate(cxt context.Context, username, password strin
 	)
 
 	// Lookup the user.
-	resp, err := a.conn.Search(req)
+	resp, err := conn.Search(req)
 	if err != nil {
 		return false, err
 	}
@@ -91,7 +89,7 @@ func (a *ldapBackend) Authenticate(cxt context.Context, username, password strin
 	// Bind the user and verify their password.
 	dn := resp.Entries[0].DN
 
-	err = a.conn.Bind(dn, password)
+	err = conn.Bind(dn, password)
 	// Success.
 	if err == nil {
 		return true, nil
