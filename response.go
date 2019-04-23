@@ -60,6 +60,8 @@
 */
 package main
 
+import "fmt"
+
 type TypeSignature struct {
 	RawType          string        `json:"rawType"`
 	TypeArguments    []interface{} `json:"typeArguments"`
@@ -98,4 +100,54 @@ type Response struct {
 	Warnings                      []interface{}   `json:"warnings"`
 	AddedPreparedStatements       struct{}        `json:"addedPreparedStatements"`
 	DeallocatedPreparedStatements []interface{}   `json:"deallocatedPreparedStatements"`
+}
+
+func newAsyncResponse(id, infoUri string) *Response {
+	return &Response{
+		Id:      id,
+		InfoUri: infoUri,
+		Columns: []*Column{
+			{
+				Name: "id",
+				Type: fmt.Sprintf("varchar(%d)", len(id)),
+				TypeSignature: TypeSignature{
+					RawType: "varchar",
+					Arguments: []interface{}{
+						map[string]interface{}{
+							"kind":  "LONG_LITERAL",
+							"value": len(id),
+						},
+					},
+				},
+			},
+			{
+				Name: "info_uri",
+				Type: fmt.Sprintf("varchar(%d)", len(infoUri)),
+				TypeSignature: TypeSignature{
+					RawType: "varchar",
+					Arguments: []interface{}{
+						map[string]interface{}{
+							"kind":  "LONG_LITERAL",
+							"value": len(infoUri),
+						},
+					},
+				},
+			},
+		},
+		Data: [][]interface{}{
+			{
+				id,
+				infoUri,
+			},
+		},
+		Stats: &Stats{
+			State:              "FINISHED",
+			Queued:             false,
+			Scheduled:          true,
+			ProgressPercentage: 100,
+		},
+		Warnings:                      []interface{}{},
+		AddedPreparedStatements:       struct{}{},
+		DeallocatedPreparedStatements: []interface{}{},
+	}
 }
