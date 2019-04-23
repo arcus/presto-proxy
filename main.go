@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	headerPrestoUser       = "X-Presto-User"
 	headerPrestoClientTags = "X-Presto-Client-Tags"
 )
 
@@ -201,6 +202,9 @@ func run() error {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
+
+			// Set the presto user so its reflected in the UI and logged as the requesting user.
+			r.Header.Set(headerPrestoUser, username)
 		}
 
 		// Remove the authorization header prior to proxying.
