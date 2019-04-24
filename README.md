@@ -3,6 +3,7 @@
 An HTTP proxy that understands the [Presto HTTP protocol](https://github.com/prestodb/presto/wiki/HTTP-Protocol) and adds additional features such as:
 
 - [Fire-and-forget](#fire-and-forget) async execution of queries
+- [LDAP authentication](#ldap-authentication)
 
 ## Features
 
@@ -32,6 +33,10 @@ The output is the Job ID and the URL to the UI for the job. This allows you to v
 **Multi-statement queries are not run in order.** This is side-effect of the fact that the client is doing the work of parsing the multi-statement queries (delimited by semicolons) and executing them in order (waiting for the result of the previous statement). Since each statement is fire-and-forget and therefore the result returns immediately, the next statement will be executed before the previous one actually finishes.
 
 See [feature ideas](#feature-ideas) that address the above caveats.
+
+### LDAP authentication
+
+LDAP authentication is supported natively by [Presto](https://docs.starburstdata.com/latest/security/ldap.html) however baking it into the proxy provides more flexibility on when it is required/enforced.
 
 ## Feature ideas
 
