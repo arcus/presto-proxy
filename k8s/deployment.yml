@@ -9,7 +9,7 @@ metadata:
     component: proxy
 
 spec:
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -20,24 +20,20 @@ spec:
     spec:
       restartPolicy: Always
 
-      volumes:
-        - name: wildcard-tls
-
       containers:
         - image: quay.research.chop.edu/arcus/presto-proxy:latest
+          imagePullPolicy: Always
           name: starburst-presto-proxy
           command: ["/presto-proxy"]
           args:
-            - "--bind.addr"
+            - "--http.bind"
             - "0.0.0.0:8081"
-            - "--server"
+            - "--http.advertise"
+            - "https://presto.reskubeprod.research.chop.edu"
+            - "--presto.addr"
             - "http://starburst-presto:8080"
-            - "--tls.key"
-            - "/tls/tls.key"
-            - "--tls.crt"
-            - "/tls/tls.crt"
-
-          imagePullPolicy: Always
+            - "--ldap.addr"
+            - "chop.edu:3268"
 
           resources:
             requests:
@@ -47,12 +43,16 @@ spec:
               cpu: 500m
               memory: 1G
 
+          readinessProbe:
+            httpGet:
+              path: /ui/
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+
           ports:
             - containerPort: 8081
-
-          volumeMounts:
-            - name: wildcard-tls
-              mountPath: /tls
 
 ---
 kind: Service
