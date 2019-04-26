@@ -13,10 +13,6 @@ type Config struct {
 		Addr string
 	}
 	LDAP struct {
-		Addr         string
-		Username     string
-		Password     string
-		SearchDN     string
-		SearchFilter string
+		Addr string
 	}
 }

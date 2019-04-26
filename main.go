@@ -38,10 +38,6 @@ func run() error {
 		fs.String("http.tls.key", "", "TLS key path.")
 		fs.String("presto.addr", "localhost:8080", "Presto server location")
 		fs.String("ldap.addr", "", "LDAP server address.")
-		fs.String("ldap.username", "", "LDAP username.")
-		fs.String("ldap.password", "", "LDAP password.")
-		fs.String("ldap.searchdn", "", "LDAP search DN.")
-		fs.String("ldap.searchfilter", "", "LDAP search filter.")
 
 		return nil
 	})
@@ -76,11 +72,7 @@ func run() error {
 	if cfg.LDAP.Addr != "" {
 		// Configure LDAP connection.
 		authBackend = &ldapBackend{
-			Address:      cfg.LDAP.Addr,
-			Username:     cfg.LDAP.Username,
-			Password:     cfg.LDAP.Password,
-			SearchDN:     cfg.LDAP.SearchDN,
-			SearchFilter: cfg.LDAP.SearchFilter,
+			Address: cfg.LDAP.Addr,
 		}
 
 		// Ensure a connection can be established.
@@ -108,8 +100,6 @@ func run() error {
 	proxy := httputil.NewSingleHostReverseProxy(targetAddr)
 
 	proxy.ModifyResponse = func(r *http.Response) error {
-		log.Printf("received %s %s", r.Request.Method, r.Request.URL)
-
 		// Ignore responses with empty bodies.
 		if r.ContentLength <= 0 {
 			return nil
