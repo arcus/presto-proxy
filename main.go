@@ -201,6 +201,15 @@ func run() error {
 
 			// Prepare username and password and authenticate client.
 			username, password := string(creds[:splitIdx]), string(creds[splitIdx+1:])
+			username = strings.TrimSpace(username)
+			password = strings.TrimSpace(password)
+
+			if username == "" || password == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintln(w, "Username and password required")
+				return
+			}
+
 			ok, err := authBackend.Authenticate(r.Context(), username, password)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
