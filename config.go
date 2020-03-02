@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 type Config struct {
 	HTTP struct {
 		Bind      string
@@ -13,6 +15,11 @@ type Config struct {
 		Addr string
 	}
 	LDAP struct {
-		Addr string
+		Addr    string
+		Timeout time.Duration
+		TLS     struct {
+			CA         string `json:"ca" yaml:"ca"`
+			SkipVerify bool   `json:"skipverify" yaml:"skipverify"`
+		}
 	}
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +18,7 @@ import (
 	"github.com/arcus/pkg/config"
 	"github.com/arcus/pkg/log"
 	"github.com/spf13/pflag"
+	"gopkg.in/ldap.v2"
 )
 
 const (
@@ -39,6 +42,9 @@ func run() error {
 		fs.String("http.tls.key", "", "TLS key path.")
 		fs.String("presto.addr", "localhost:8080", "Presto server location")
 		fs.String("ldap.addr", "", "LDAP server address.")
+		fs.String("ldap.tls.ca", "", "LDAP server TLS CA cert.")
+		fs.Bool("ldap.tls.skipverify", false, "Skip TLS vertification.")
+		fs.Duration("ldap.timeout", ldap.DefaultTimeout, "Connection timeout for LDAP")
 
 		return nil
 	})
@@ -73,9 +79,34 @@ func run() error {
 
 	var authBackend *ldapBackend
 	if cfg.LDAP.Addr != "" {
+		if cfg.LDAP.Timeout > 0 {
+			ldap.DefaultTimeout = cfg.LDAP.Timeout
+		}
+
+		var tlsConfig *tls.Config
+		var certPool *x509.CertPool
+
+		if cfg.LDAP.TLS.CA != "" {
+			caCert, err := ioutil.ReadFile(cfg.LDAP.TLS.CA)
+			if err != nil {
+				return fmt.Errorf("config.ldap.tls.ca: %s", err)
+			}
+
+			certPool = x509.NewCertPool()
+			certPool.AppendCertsFromPEM(caCert)
+		}
+
+		if certPool != nil || cfg.LDAP.TLS.SkipVerify {
+			tlsConfig = &tls.Config{
+				RootCAs:            certPool,
+				InsecureSkipVerify: cfg.LDAP.TLS.SkipVerify,
+			}
+		}
+
 		// Configure LDAP connection.
 		authBackend = &ldapBackend{
-			Address: cfg.LDAP.Addr,
+			Address:   cfg.LDAP.Addr,
+			TLSConfig: tlsConfig,
 		}
 
 		// Ensure a connection can be established.
