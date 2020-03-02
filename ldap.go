@@ -21,9 +21,9 @@ type ldapBackend struct {
 func (a *ldapBackend) Ping() error {
 	conn, err := ldap.Dial("tcp", a.Address)
 	if err != nil {
-		return err
+		return fmt.Errorf("ping/connect: %s", err)
 	}
-	conn.Close()
+	defer conn.Close()
 	return nil
 }
 
@@ -31,7 +31,7 @@ func (a *ldapBackend) Authenticate(cxt context.Context, username, password strin
 	// Open connection.
 	conn, err := ldap.Dial("tcp", a.Address)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("authenticate/connect: %s", err)
 	}
 	defer conn.Close()
 
@@ -46,5 +46,5 @@ func (a *ldapBackend) Authenticate(cxt context.Context, username, password strin
 		return false, nil
 	}
 
-	return false, err
+	return false, fmt.Errorf("authenticate: %s", err)
 }
